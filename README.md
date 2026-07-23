@@ -121,6 +121,20 @@ Quantum Radar/
 │           ├── FineReporter.java          # <<interface>> — presentation abstraction
 │           └── ConsoleFineReporter.java   # prints to stdout
 ```
+## Results and Observations:
+<img width="527" height="170" alt="image" src="https://github.com/user-attachments/assets/fe17e2d8-2a6b-41f6-851c-198c370885b7" />
+<img width="508" height="161" alt="image" src="https://github.com/user-attachments/assets/92737580-5a48-46d5-83bf-1703692565d2" />
+<img width="467" height="155" alt="image" src="https://github.com/user-attachments/assets/a397dd7b-dca5-471f-b4a4-53b5ed8830e2" />
+<img width="685" height="46" alt="image" src="https://github.com/user-attachments/assets/04009a1a-7cbd-44a3-b8da-1c8606d106ea" />
+<img width="255" height="195" alt="image" src="https://github.com/user-attachments/assets/ba8fc4fc-4b69-407f-8127-a09b01d4a84e" />
+<img width="336" height="152" alt="image" src="https://github.com/user-attachments/assets/d52b3c98-f0a6-47ad-9cbc-962727adcb1d" />
+
+
+
+
+
+
+
 
 ---
 
