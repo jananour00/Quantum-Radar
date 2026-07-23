@@ -24,7 +24,6 @@ import java.util.*;
  * - Issues fines with detailed violation breakdowns
  * - Provides statistics on all violations and fines issued
  *
- * AI Model Used: None (rule-based evaluation system)
  *
  * Design notes:
  * - QuRadar depends only on the Rule abstraction, never on a concrete rule
