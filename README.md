@@ -16,6 +16,8 @@ A Java traffic-violation detection and fine-management system, refactored to fol
 - [SOLID Principles Applied](#solid-principles-applied)
 - [Domain Rules](#domain-rules)
 - [Validation vs. Violations](#validation-vs-violations)
+- [Exception Handling](#exception-handling)
+- [Sample Output](#sample-output)
 - [Build & Run](#build--run)
 - [Usage](#usage)
 - [Extending the System](#extending-the-system)
@@ -36,10 +38,22 @@ A Java traffic-violation detection and fine-management system, refactored to fol
 | Fine | `Fine` | All violations for one car, plus the total amount |
 | Orchestrator | `QuRadar` | Runs every rule against an observation, tracks results |
 | Presentation | `FineReporter` (+ `ConsoleFineReporter`) | Decides how results are displayed |
+| Errors | `RadarException` (+ `InvalidObservationException`, `MissingFieldException`, `InvalidRuleException`) | Distinguishes missing data from invalid data from bad rule wiring |
 | Composition root | `Main` | Wires concrete rules and the reporter together and demos the system |
 
 ---
+## Results and Observations:
+<img width="622" height="190" alt="image" src="https://github.com/user-attachments/assets/9234fd0d-477a-42ff-88d9-5b4abe634c27" />
+<img width="537" height="157" alt="image" src="https://github.com/user-attachments/assets/a75a5f64-241f-47de-afb3-9318189578d9" />
+<img width="505" height="152" alt="image" src="https://github.com/user-attachments/assets/24caef05-3351-4bd1-9794-6b9c4c73379d" />
+<img width="290" height="176" alt="image" src="https://github.com/user-attachments/assets/423f522e-9415-4e91-90b9-f66d3d4b1321" /><img width="420" height="155" alt="image" src="https://github.com/user-attachments/assets/faf5dd9b-fc64-48ad-a8f3-e66f70b975a1" />
 
+
+
+
+
+
+---
 ## What Changed in This Refactor
 
 The original version worked, but had four concrete design problems. Each was fixed as its own commit — see `git log` for the full history and reasoning:
@@ -48,6 +62,8 @@ The original version worked, but had four concrete design problems. Each was fix
 2. **A closed `ViolationType` enum + a `switch` statement in `QuRadar`** meant every speed violation (`PRIVATE`, `TRUCK`, `BUS`) collapsed into a single `SPEED_EXCEEDED` bucket — the per-rule statistics the spec asks for (`Private Speed : 5`, `Truck Speed : 2`) were actually impossible to produce correctly, and adding a rule meant editing the enum and the switch. → **Fixed**: `ViolationType` is gone; `Violation` now carries the `ruleName` string that `Rule#getName()` supplies, so no central list needs to change.
 3. **`QuRadar.observe()` printed to `System.out` directly** (`fine.print()`), and `Fine` itself had a `print()` method that did console I/O. Business logic and presentation were the same classes. → **Fixed**: `observe()` returns `Optional<Fine>`; `Fine` is a pure data model; a new `radar.report` package (`FineReporter` interface + `ConsoleFineReporter`) owns all display logic.
 4. **Three near-identical speed rule classes** (`PrivateCarSpeedRule`, `TruckSpeedRule`, `BusSpeedRule`) repeated the same comparison/fee-calculation logic with only the numbers changed. → **Fixed**: extracted a package-private `SpeedRule` abstract base; each concrete rule now only declares its vehicle type, max speed, and fee per km over.
+5. **All validation failures threw the same generic `IllegalArgumentException`**, so a caller couldn't tell a missing field apart from an out-of-range one without parsing the message string. → **Fixed**: a small `radar.exception` hierarchy (`RadarException` → `InvalidObservationException` / `InvalidRuleException`, and `MissingFieldException` for null/blank required fields) replaces every `IllegalArgumentException` in the system. See [Exception Handling](#exception-handling).
+6. **Output text didn't match the spec exactly** (`"Traffic for car ..."` vs. the required `"Traffic fine for car ..."`). → **Fixed** in `ConsoleFineReporter`.
 
 A `MotorcycleSpeedRule` was then added as its own commit to prove the extensibility claim — it's a new file plus one new enum constant plus one line in `Main`; `QuRadar.java` is untouched by that commit.
 
@@ -122,6 +138,12 @@ Quantum Radar/
 │       │   ├── Observation.java           # immutable, self-validating
 │       │   ├── Violation.java             # one broken rule + fee
 │       │   └── Fine.java                  # violations for one car + total
+│       │
+│       ├── exception/
+│       │   ├── RadarException.java            # base type for all radar errors
+│       │   ├── InvalidObservationException.java  # present but invalid value
+│       │   ├── MissingFieldException.java     # required field was null/blank
+│       │   └── InvalidRuleException.java      # bad Rule wiring into QuRadar
 │       │
 │       ├── rule/
 │       │   ├── Rule.java                  # <<interface>> — the extension point
@@ -227,6 +249,24 @@ classDiagram
         +main(String[] args) void
     }
 
+    class RadarException {
+        <<runtime exception>>
+    }
+    class InvalidObservationException
+    class MissingFieldException {
+        -String fieldName
+        +getFieldName() String
+    }
+    class InvalidRuleException
+
+    RadarException <|-- InvalidObservationException
+    RadarException <|-- InvalidRuleException
+    InvalidObservationException <|-- MissingFieldException
+    Observation ..> InvalidObservationException : throws
+    Observation ..> MissingFieldException : throws
+    QuRadar ..> InvalidRuleException : throws
+    QuRadar ..> MissingFieldException : throws
+
     Rule <|.. SeatbeltRule
     Rule <|.. SpeedRule
     SpeedRule <|-- PrivateCarSpeedRule
@@ -311,18 +351,67 @@ Each rule is fully independent — `QuRadar` has no idea any of them exist beyon
 
 ## Validation vs. Violations
 
-Kept deliberately separate, as before:
+Kept deliberately separate:
 
-- **Invalid input** (blank/malformed plate, negative or unrealistic speed, null date, future-dated observation, null vehicle type) is a data-integrity problem. It throws `IllegalArgumentException` at the moment `Observation` is constructed, before it ever reaches a rule.
+- **Invalid input** (blank/malformed plate, negative or unrealistic speed, future-dated observation, null vehicle type) is a data-integrity problem. It throws a `radar.exception` type at the moment `Observation` (or `Fine`/`Violation`) is constructed, before it ever reaches a rule.
 - **A broken traffic law** (speeding, no seatbelt) is an expected business outcome, not an error. It never throws — it becomes a `Violation` and is billed as part of a `Fine`.
 
-| Field | Validation |
-|---|---|
-| Plate Number | Not null/blank, alphanumeric, 3–10 characters |
-| Date | Not null, not in the future |
-| Vehicle Type | Not null |
-| Speed | 0–300 km/h |
-| Seatbelt | Any boolean — no validation needed |
+| Field | Validation | On failure |
+|---|---|---|
+| Plate Number | Not null/blank, alphanumeric, 3–10 characters | `MissingFieldException` (null/blank) or `InvalidObservationException` (bad format) |
+| Date | Not in the future | `null` is **not** an error — defaults to `LocalDateTime.now()`. Only a future date throws `InvalidObservationException`. |
+| Vehicle Type | Not null | `MissingFieldException` |
+| Speed | 0–300 km/h | `InvalidObservationException` |
+| Seatbelt | Any boolean | No validation needed |
+
+---
+
+## Exception Handling
+
+Every error the system can raise extends `radar.exception.RadarException` (itself an unchecked `RuntimeException`), so a caller can catch broadly with one type or narrowly with a specific one:
+
+```
+RadarException                        (base — "something in the radar system failed")
+├── InvalidObservationException       (a value was present but not legal)
+│   └── MissingFieldException         (a required field was null/blank; carries getFieldName())
+└── InvalidRuleException              (QuRadar was given a null/unusable Rule)
+```
+
+Design intent:
+
+- **Missing vs. invalid are different problems.** `MissingFieldException` (e.g. no plate number sent at all) is distinct from `InvalidObservationException` (e.g. a plate number was sent, but it's `"A"`). A caller integrating with a real radar feed may want to log/retry these differently — a sensor that skipped a field vs. one that sent garbage.
+- **Missing is not always fatal.** A `null` date isn't rejected — `Observation` treats it as "the sensor didn't stamp a time" and defaults to `LocalDateTime.now()` rather than discarding an otherwise-valid observation. Plate number and vehicle type have no sane default, so those stay required.
+- **No bare `IllegalArgumentException` anywhere in the system anymore.** Every throw site names the exact `radar.exception` type, so `catch (MissingFieldException e)` and `catch (InvalidObservationException e)` are both meaningful to a caller instead of everything collapsing into one generic type.
+- **Unchecked by design.** A malformed radar observation is a data problem to be handled at the boundary (validate, log, skip), not a checked exception every internal method signature would have to declare.
+
+`Main` demonstrates catching each level of the hierarchy — narrowest first, falling back to `RadarException` — see the `=== Testing Exception Handling ===` section of its output.
+
+---
+
+## Sample Output
+
+Running `Main` produces, for the first observation (`Private car, 94 km/h, no seatbelt`), exactly the format the spec requires:
+
+```
+Traffic fine for car ABC1234
+Total amount: 400 EGP
+Violations:
+- Seatbelt not fastened : 100 EGP
+- speed of 94 exceeded max allowed 80 : 300 EGP
+```
+
+And the exception-handling demo output looks like:
+
+```
+Missing plate number (null) -> MissingFieldException
+  Caught MissingFieldException (field: plateNumber): plateNumber is required but was missing
+
+Invalid plate: 'A' (too short) -> InvalidObservationException
+  Caught InvalidObservationException: Invalid plate number 'A': must be alphanumeric, 3-10 characters
+
+Missing date (null) is NOT rejected - it defaults to now():
+  Accepted with date defaulted to: 2026-07-23T11:42:07.123
+```
 
 ---
 
