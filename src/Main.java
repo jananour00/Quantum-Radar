@@ -6,6 +6,7 @@ import radar.model.VehicleType;
 import radar.report.ConsoleFineReporter;
 import radar.report.FineReporter;
 import radar.rule.BusSpeedRule;
+import radar.rule.MotorcycleSpeedRule;
 import radar.rule.PrivateCarSpeedRule;
 import radar.rule.Rule;
 import radar.rule.SeatbeltRule;
@@ -36,7 +37,8 @@ public class Main {
                 new SeatbeltRule(),
                 new PrivateCarSpeedRule(),
                 new TruckSpeedRule(),
-                new BusSpeedRule()
+                new BusSpeedRule(),
+                new MotorcycleSpeedRule()
         );
         QuRadar radar = new QuRadar(rules);
         FineReporter reporter = new ConsoleFineReporter();
@@ -62,6 +64,10 @@ public class Main {
         observeAndReport(radar, reporter,
                 "Observation 5: Private car, 95 km/h, seatbelt on",
                 new Observation("SPEEDR", LocalDateTime.now(), VehicleType.PRIVATE, 95, true));
+
+        observeAndReport(radar, reporter,
+                "Observation 6: Motorcycle, 88 km/h, seatbelt on",
+                new Observation("MOTO001", LocalDateTime.now(), VehicleType.MOTORCYCLE, 88, true));
 
         System.out.println("=== All Fines Issued ===");
         reporter.reportAllFines(radar.getAllPossibleFines());

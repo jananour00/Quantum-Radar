@@ -4,5 +4,6 @@ package radar.model;
 public enum VehicleType {
     PRIVATE,
     TRUCK,
-    BUS
+    BUS,
+    MOTORCYCLE
 }
