@@ -21,11 +21,6 @@ public interface Rule {
      */
     Optional<Violation> check(Observation observation);
 
-    /**
-     * Short, stable, human-readable name for this rule, e.g. "Seatbelt",
-     * "Private Speed". Used both inside generated Violations and for
-     * per-rule statistics in QuRadar#getViolatedRulesCount — this is
-     * what lets QuRadar report on any rule without knowing it exists.
-     */
+
     String getName();
 }
