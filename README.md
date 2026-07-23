@@ -8,7 +8,6 @@ A Java traffic-violation detection and fine-management system, refactored to fol
 
 ## Table of Contents
 - [Overview](#overview)
-- [What Changed in This Refactor](#what-changed-in-this-refactor)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Class Diagram](#class-diagram)
