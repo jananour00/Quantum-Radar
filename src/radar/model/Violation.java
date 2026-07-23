@@ -5,16 +5,23 @@ import java.util.Objects;
 
 /**
  * Represents a traffic rule violation.
- * Contains the type of violation and a human-readable description.
+ *
+ * Deliberately identifies itself by ruleName (a plain String supplied by
+ * the Rule that detected it) rather than a closed enum. A fixed enum of
+ * violation "types" plus a switch statement elsewhere in the system is
+ * itself an Open/Closed Principle violation: every new rule would force
+ * a change to that enum and to whatever switches on it. Since each Rule
+ * already knows its own display name (Rule#getName), Violation simply
+ * carries that name through — no central registry to edit.
  */
 public class Violation {
-    private final ViolationType type;
+    private final String ruleName;
     private final String description;
     private final int fee;
 
-    public Violation(ViolationType type, String description, int fee) {
-        if (type == null) {
-            throw new IllegalArgumentException("Violation type cannot be null");
+    public Violation(String ruleName, String description, int fee) {
+        if (ruleName == null || ruleName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Rule name cannot be null or empty");
         }
         if (description == null || description.trim().isEmpty()) {
             throw new IllegalArgumentException("Violation description cannot be empty");
@@ -23,12 +30,12 @@ public class Violation {
             throw new IllegalArgumentException("Fee cannot be negative");
         }
 
-        this.type = type;
+        this.ruleName = ruleName.trim();
         this.description = description.trim();
         this.fee = fee;
     }
 
-    public ViolationType getType() { return type; }
+    public String getRuleName() { return ruleName; }
     public String getDescription() { return description; }
     public int getFee() { return fee; }
 
@@ -38,13 +45,13 @@ public class Violation {
         if (o == null || getClass() != o.getClass()) return false;
         Violation violation = (Violation) o;
         return fee == violation.fee &&
-                type == violation.type &&
+                Objects.equals(ruleName, violation.ruleName) &&
                 Objects.equals(description, violation.description);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, description, fee);
+        return Objects.hash(ruleName, description, fee);
     }
 
     @Override

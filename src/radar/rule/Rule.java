@@ -1,8 +1,8 @@
 // src/radar/rule/Rule.java
 package radar.rule;
 
-import radar.Observation;
-import radar.violation.Violation;
+import radar.model.Observation;
+import radar.model.Violation;
 import java.util.Optional;
 
 /**
@@ -20,4 +20,12 @@ public interface Rule {
      * @return Optional containing a Violation if the rule is broken, empty otherwise
      */
     Optional<Violation> check(Observation observation);
+
+    /**
+     * Short, stable, human-readable name for this rule, e.g. "Seatbelt",
+     * "Private Speed". Used both inside generated Violations and for
+     * per-rule statistics in QuRadar#getViolatedRulesCount — this is
+     * what lets QuRadar report on any rule without knowing it exists.
+     */
+    String getName();
 }

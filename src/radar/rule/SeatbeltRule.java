@@ -1,10 +1,8 @@
 // src/radar/rule/SeatbeltRule.java
 package radar.rule;
 
-import radar.Observation;
-import radar.rule.Rule;
-import radar.violation.Violation;
-import radar.violation.ViolationType;
+import radar.model.Observation;
+import radar.model.Violation;
 import java.util.Optional;
 
 /**
@@ -15,16 +13,18 @@ public class SeatbeltRule implements Rule {
 
     private static final int FEE = 100;
     private static final String DESCRIPTION = "Seatbelt not fastened";
+    private static final String NAME = "Seatbelt";
 
     @Override
     public Optional<Violation> check(Observation observation) {
         if (!observation.isSeatbeltFastened()) {
-            return Optional.of(new Violation(
-                    ViolationType.SEATBELT_NOT_FASTENED,
-                    DESCRIPTION,
-                    FEE
-            ));
+            return Optional.of(new Violation(NAME, DESCRIPTION, FEE));
         }
         return Optional.empty();
+    }
+
+    @Override
+    public String getName() {
+        return NAME;
     }
 }
