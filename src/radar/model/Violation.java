@@ -1,5 +1,5 @@
-// src/radar/violation/Violation.java
-package radar.violation;
+// src/radar/model/Violation.java
+package radar.model;
 
 import java.util.Objects;
 

@@ -1,5 +1,5 @@
-// src/radar/fine/Fine.java
-package radar.fine;
+// src/radar/model/Fine.java
+package radar.model;
 
 import radar.violation.Violation;
 import java.util.ArrayList;

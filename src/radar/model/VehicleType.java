@@ -1,5 +1,5 @@
-// src/radar/VehicleType.java
-package radar;
+// src/radar/model/VehicleType.java
+package radar.model;
 
 public enum VehicleType {
     PRIVATE,

@@ -1,5 +1,5 @@
-// src/radar/Observation.java
-package radar;
+// src/radar/model/Observation.java
+package radar.model;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
