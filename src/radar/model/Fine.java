@@ -41,22 +41,6 @@ public class Fine {
     public List<Violation> getViolations() { return Collections.unmodifiableList(violations); }
     public int getTotalAmount() { return totalAmount; }
 
-    /**
-     * Prints the fine in the exact format required by the specification.
-     */
-    public void print() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Traffic for car ").append(plateNumber).append("\n");
-        sb.append("Total amount: ").append(totalAmount).append(" EGP\n");
-        sb.append("Violations:\n");
-
-        for (Violation violation : violations) {
-            sb.append("- ").append(violation).append("\n");
-        }
-
-        System.out.print(sb.toString());
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

@@ -1,14 +1,10 @@
 // src/radar/QuRadar.java
 package radar;
 
-import radar.fine.Fine;
+import radar.model.Fine;
+import radar.model.Observation;
+import radar.model.Violation;
 import radar.rule.Rule;
-import radar.rule.SeatbeltRule;
-import radar.rule.PrivateCarSpeedRule;
-import radar.rule.TruckSpeedRule;
-import radar.rule.BusSpeedRule;
-import radar.violation.Violation;
-import radar.violation.ViolationType;
 
 import java.util.*;
 
@@ -28,39 +24,37 @@ import java.util.*;
  *
  * AI Model Used: None (rule-based evaluation system)
  *
- * The system is designed to be easily extended with new rules without modifying
- * existing code - simply add new Rule implementations to the rules list.
- *
- * @author [Your Name]
- * @version 1.0
+ * Design notes:
+ * - QuRadar depends only on the Rule abstraction, never on a concrete rule
+ *   class. The rules it enforces are supplied to it (constructor injection)
+ *   rather than instantiated internally, so QuRadar has no idea SeatbeltRule
+ *   or PrivateCarSpeedRule exist - it can run with any list of Rule
+ *   implementations, current or future (Dependency Inversion Principle).
+ * - QuRadar is intentionally silent: it records fines and statistics but
+ *   never calls System.out itself. Presentation is the responsibility of
+ *   the radar.report package (Single Responsibility Principle) - callers
+ *   decide what, if anything, to print.
  */
 public class QuRadar {
 
     private final List<Rule> rules;
-    private final Map<String, List<Fine>> finesByPlate;
-    private final Map<ViolationType, Integer> violationCounts;
+    private final List<Fine> issuedFines;
+    private final Map<String, Integer> violatedRuleCounts;
 
     /**
-     * Constructs a new QuRadar with default rules registered.
+     * Constructs a QuRadar enforcing exactly the given rules.
+     * Composition (which rules to run) is the caller's responsibility -
+     * see Main for how the default rule set is assembled and injected.
+     *
+     * @param rules the rules to enforce; must not be null
      */
-    public QuRadar() {
-        this.rules = new ArrayList<>();
-        this.finesByPlate = new HashMap<>();
-        this.violationCounts = new HashMap<>();
-
-        // Register default rules
-        registerDefaultRules();
-    }
-
-    /**
-     * Registers the default set of traffic rules.
-     * New rules can be added here or via addRule() method.
-     */
-    private void registerDefaultRules() {
-        rules.add(new SeatbeltRule());
-        rules.add(new PrivateCarSpeedRule());
-        rules.add(new TruckSpeedRule());
-        rules.add(new BusSpeedRule());
+    public QuRadar(List<Rule> rules) {
+        if (rules == null) {
+            throw new IllegalArgumentException("Rules list cannot be null");
+        }
+        this.rules = new ArrayList<>(rules);
+        this.issuedFines = new ArrayList<>();
+        this.violatedRuleCounts = new LinkedHashMap<>();
     }
 
     /**
@@ -79,138 +73,73 @@ public class QuRadar {
 
     /**
      * Processes a single observation from the physical radar.
-     * Checks all applicable rules and generates violations and fines if needed.
+     * Checks all applicable rules and, if any are broken, issues and
+     * stores a Fine. Does not print anything - see radar.report for that.
      *
      * @param observation The observation from the radar system
+     * @return the Fine issued for this observation, or empty if there were no violations
      * @throws IllegalArgumentException if observation is null
      */
-    public void observe(Observation observation) {
+    public Optional<Fine> observe(Observation observation) {
         if (observation == null) {
             throw new IllegalArgumentException("Observation cannot be null");
         }
 
         List<Violation> violations = checkRules(observation);
-
-        if (!violations.isEmpty()) {
-            // Create and store the fine
-            Fine fine = new Fine(observation.getPlateNumber(), violations);
-            storeFine(fine);
-
-            // Update violation statistics
-            updateViolationCounts(violations);
-
-            // Print the fine (as specified in requirements)
-            fine.print();
+        if (violations.isEmpty()) {
+            return Optional.empty();
         }
+
+        Fine fine = new Fine(observation.getPlateNumber(), violations);
+        issuedFines.add(fine);
+        updateViolationCounts(violations);
+        return Optional.of(fine);
     }
 
-    /**
-     * Checks all registered rules against an observation.
-     *
-     * @param observation The observation to check
-     * @return List of violations found
-     */
     private List<Violation> checkRules(Observation observation) {
         List<Violation> violations = new ArrayList<>();
-
         for (Rule rule : rules) {
-            Optional<Violation> violation = rule.check(observation);
-            violation.ifPresent(violations::add);
+            rule.check(observation).ifPresent(violations::add);
         }
-
         return violations;
     }
 
-    /**
-     * Stores a fine in the system, indexed by plate number.
-     */
-    private void storeFine(Fine fine) {
-        finesByPlate.computeIfAbsent(fine.getPlateNumber(),
-                k -> new ArrayList<>()).add(fine);
-    }
-
-    /**
-     * Updates the violation count statistics.
-     */
     private void updateViolationCounts(List<Violation> violations) {
         for (Violation violation : violations) {
-            violationCounts.merge(violation.getType(), 1, Integer::sum);
+            violatedRuleCounts.merge(violation.getRuleName(), 1, Integer::sum);
         }
     }
 
     /**
      * Gets all fines issued, with total amount per plate number.
-     * Required method from specification.
-     * Output format: "PLATE -> TOTAL_AMOUNT"
+     * Required method from specification. Output format: "PLATE -> TOTAL_AMOUNT"
      *
      * @return Map of plate number to total fine amount
      */
     public Map<String, Integer> getAllPossibleFines() {
-        Map<String, Integer> totalFines = new HashMap<>();
-
-        for (Map.Entry<String, List<Fine>> entry : finesByPlate.entrySet()) {
-            String plateNumber = entry.getKey();
-            int totalAmount = entry.getValue().stream()
-                    .mapToInt(Fine::getTotalAmount)
-                    .sum();
-            totalFines.put(plateNumber, totalAmount);
+        Map<String, Integer> totalFines = new LinkedHashMap<>();
+        for (Fine fine : issuedFines) {
+            totalFines.merge(fine.getPlateNumber(), fine.getTotalAmount(), Integer::sum);
         }
-
         return totalFines;
     }
 
     /**
-     * Gets count of each violation type that has been detected.
-     * Required method from specification.
+     * Returns every fine issued so far, in the order they occurred, with
+     * full violation detail. Useful for reporting layers that need more
+     * than the plate/total summary from getAllPossibleFines().
+     */
+    public List<Fine> getIssuedFines() {
+        return Collections.unmodifiableList(issuedFines);
+    }
+
+    /**
+     * Gets count of how many times each rule (by Rule#getName) has been
+     * violated. Required method from specification.
      *
-     * @return Map of violation type to count
+     * @return Map of rule name to violation count
      */
-    public Map<ViolationType, Integer> getViolatedRulesCount() {
-        return new HashMap<>(violationCounts);
-    }
-
-    /**
-     * Prints all fines in the required format.
-     */
-    public void printAllFines() {
-        Map<String, Integer> allFines = getAllPossibleFines();
-        if (allFines.isEmpty()) {
-            System.out.println("No fines issued yet.");
-            return;
-        }
-
-        for (Map.Entry<String, Integer> entry : allFines.entrySet()) {
-            System.out.println(entry.getKey() + " -> " + entry.getValue());
-        }
-    }
-
-    /**
-     * Prints all violation statistics.
-     */
-    public void printViolationStatistics() {
-        Map<ViolationType, Integer> counts = getViolatedRulesCount();
-        if (counts.isEmpty()) {
-            System.out.println("No violations detected yet.");
-            return;
-        }
-
-        for (Map.Entry<ViolationType, Integer> entry : counts.entrySet()) {
-            String violationName = formatViolationType(entry.getKey());
-            System.out.println(violationName + " : " + entry.getValue());
-        }
-    }
-
-    /**
-     * Formats the violation type for human-readable output.
-     */
-    private String formatViolationType(ViolationType type) {
-        switch (type) {
-            case SEATBELT_NOT_FASTENED:
-                return "Seatbelt";
-            case SPEED_EXCEEDED:
-                return "Speed Exceeded";
-            default:
-                return type.name().replace('_', ' ');
-        }
+    public Map<String, Integer> getViolatedRulesCount() {
+        return new LinkedHashMap<>(violatedRuleCounts);
     }
 }
