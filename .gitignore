@@ -1,0 +1,23 @@
+# Compiled output
+out/
+bin/
+build/
+*.class
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Maven / Gradle (in case you add a build tool later)
+target/
+.gradle/
+gradle-app.setting
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
