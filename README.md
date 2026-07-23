@@ -8,7 +8,6 @@ A Java traffic-violation detection and fine-management system, refactored to fol
 
 ## Table of Contents
 - [Overview](#overview)
-- [What Changed in This Refactor](#what-changed-in-this-refactor)
 - [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Class Diagram](#class-diagram)
@@ -53,19 +52,7 @@ A Java traffic-violation detection and fine-management system, refactored to fol
 
 
 
----
-## What Changed in This Refactor
 
-The original version worked, but had four concrete design problems. Each was fixed as its own commit — see `git log` for the full history and reasoning:
-
-1. **`QuRadar` instantiated its own rules internally** (`registerDefaultRules()` called `new SeatbeltRule()`, `new PrivateCarSpeedRule()`, ... directly in the constructor). This welded the orchestrator to specific rule classes. → **Fixed**: `QuRadar(List<Rule> rules)` now takes its rules as a constructor dependency; `Main` assembles and injects them.
-2. **A closed `ViolationType` enum + a `switch` statement in `QuRadar`** meant every speed violation (`PRIVATE`, `TRUCK`, `BUS`) collapsed into a single `SPEED_EXCEEDED` bucket — the per-rule statistics the spec asks for (`Private Speed : 5`, `Truck Speed : 2`) were actually impossible to produce correctly, and adding a rule meant editing the enum and the switch. → **Fixed**: `ViolationType` is gone; `Violation` now carries the `ruleName` string that `Rule#getName()` supplies, so no central list needs to change.
-3. **`QuRadar.observe()` printed to `System.out` directly** (`fine.print()`), and `Fine` itself had a `print()` method that did console I/O. Business logic and presentation were the same classes. → **Fixed**: `observe()` returns `Optional<Fine>`; `Fine` is a pure data model; a new `radar.report` package (`FineReporter` interface + `ConsoleFineReporter`) owns all display logic.
-4. **Three near-identical speed rule classes** (`PrivateCarSpeedRule`, `TruckSpeedRule`, `BusSpeedRule`) repeated the same comparison/fee-calculation logic with only the numbers changed. → **Fixed**: extracted a package-private `SpeedRule` abstract base; each concrete rule now only declares its vehicle type, max speed, and fee per km over.
-5. **All validation failures threw the same generic `IllegalArgumentException`**, so a caller couldn't tell a missing field apart from an out-of-range one without parsing the message string. → **Fixed**: a small `radar.exception` hierarchy (`RadarException` → `InvalidObservationException` / `InvalidRuleException`, and `MissingFieldException` for null/blank required fields) replaces every `IllegalArgumentException` in the system. See [Exception Handling](#exception-handling).
-6. **Output text didn't match the spec exactly** (`"Traffic for car ..."` vs. the required `"Traffic fine for car ..."`). → **Fixed** in `ConsoleFineReporter`.
-
-A `MotorcycleSpeedRule` was then added as its own commit to prove the extensibility claim — it's a new file plus one new enum constant plus one line in `Main`; `QuRadar.java` is untouched by that commit.
 
 ---
 
