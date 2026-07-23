@@ -1,3 +1,4 @@
+// src/radar/Observation.java
 package radar;
 
 import java.time.LocalDateTime;
@@ -6,14 +7,26 @@ import java.util.Objects;
 /**
  * Represents a single observation from the physical radar.
  * Contains all data captured about a vehicle at a specific moment.
+ * Immutable and self-validating.
  */
 public class Observation {
+
     private final String plateNumber;
     private final LocalDateTime date;
     private final VehicleType vehicleType;
     private final int speed;
     private final boolean seatbeltFastened;
 
+    /**
+     * Constructs a new Observation with full validation.
+     *
+     * @param plateNumber Vehicle plate number (alphanumeric, 3+ chars)
+     * @param date Date and time of observation (must be past or present)
+     * @param vehicleType Type of vehicle (cannot be null)
+     * @param speed Speed in km/h (0-300)
+     * @param seatbeltFastened Whether seatbelt is fastened
+     * @throws IllegalArgumentException if any validation fails
+     */
     public Observation(String plateNumber, LocalDateTime date,
                        VehicleType vehicleType, int speed, boolean seatbeltFastened) {
         validatePlateNumber(plateNumber);
@@ -21,7 +34,7 @@ public class Observation {
         validateVehicleType(vehicleType);
         validateSpeed(speed);
 
-        this.plateNumber = plateNumber.trim();
+        this.plateNumber = plateNumber.trim().toUpperCase();
         this.date = date;
         this.vehicleType = vehicleType;
         this.speed = speed;
@@ -32,9 +45,10 @@ public class Observation {
         if (plateNumber == null || plateNumber.trim().isEmpty()) {
             throw new IllegalArgumentException("Plate number cannot be null or empty");
         }
-        // Simple format validation - alphanumeric, at least 3 characters
-        if (!plateNumber.trim().matches("^[A-Z0-9]{3,}$")) {
-            throw new IllegalArgumentException("Invalid plate number format. Must be alphanumeric with at least 3 characters");
+        if (!plateNumber.trim().matches("^[A-Za-z0-9]{3,10}$")) {
+            throw new IllegalArgumentException(
+                    "Invalid plate number format. Must be alphanumeric with 3-10 characters"
+            );
         }
     }
 
@@ -42,7 +56,6 @@ public class Observation {
         if (date == null) {
             throw new IllegalArgumentException("Date cannot be null");
         }
-        // Date should be in the past or present
         if (date.isAfter(LocalDateTime.now())) {
             throw new IllegalArgumentException("Date cannot be in the future");
         }
@@ -58,7 +71,7 @@ public class Observation {
         if (speed < 0) {
             throw new IllegalArgumentException("Speed cannot be negative");
         }
-        if (speed > 300) { // Realistic maximum
+        if (speed > 300) {
             throw new IllegalArgumentException("Speed exceeds realistic maximum of 300 km/h");
         }
     }
@@ -89,7 +102,7 @@ public class Observation {
 
     @Override
     public String toString() {
-        return String.format("Observation[plate=%s, date=%s, type=%s, speed=%d, seatbelt=%s]",
-                plateNumber, date, vehicleType, speed, seatbeltFastened);
+        return String.format("Observation[plate=%s, date=%s, type=%s, speed=%d km/h, seatbelt=%s]",
+                plateNumber, date, vehicleType, speed, seatbeltFastened ? "fastened" : "not fastened");
     }
 }

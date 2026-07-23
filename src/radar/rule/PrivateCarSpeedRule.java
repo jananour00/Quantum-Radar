@@ -1,4 +1,40 @@
+// src/radar/rule/PrivateCarSpeedRule.java
 package radar.rule;
 
-public class PrivateCarSpeedRule {
+import radar.Observation;
+import radar.VehicleType;
+import radar.violation.Violation;
+import radar.violation.ViolationType;
+import java.util.Optional;
+
+/**
+ * Speed limit rule for private cars.
+ * Speed limit: 80 km/h
+ * Fee: 10 EGP per km/h over the limit
+ */
+public class PrivateCarSpeedRule implements Rule {
+
+    private static final int MAX_SPEED = 80;
+    private static final int FEE_PER_KM_OVER = 10;
+
+    @Override
+    public Optional<Violation> check(Observation observation) {
+        if (observation.getVehicleType() == VehicleType.PRIVATE
+                && observation.getSpeed() > MAX_SPEED) {
+
+            int exceededBy = observation.getSpeed() - MAX_SPEED;
+            int fee = exceededBy * FEE_PER_KM_OVER;
+            String description = String.format(
+                    "speed of %d exceeded max allowed %d",
+                    observation.getSpeed(), MAX_SPEED
+            );
+
+            return Optional.of(new Violation(
+                    ViolationType.SPEED_EXCEEDED,
+                    description,
+                    fee
+            ));
+        }
+        return Optional.empty();
+    }
 }
