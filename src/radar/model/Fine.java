@@ -1,7 +1,6 @@
 // src/radar/model/Fine.java
 package radar.model;
 
-import radar.violation.Violation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
